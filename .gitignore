@@ -1,0 +1,25 @@
+# Secrets
+.env
+
+# MLflow local store
+mlflow/data/
+
+# Load test output
+loadtest/results.json
+*.log
+
+# Node
+node_modules/
+frontend/.next/
+frontend/.env.local
+
+# Python
+__pycache__/
+.venv/
+*.pyc
+
+# Go
+loadtest/loadtest
+loadtest/*.exe
+PLAN.md
+planning.md

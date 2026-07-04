@@ -1,0 +1,85 @@
+# Full local stack, all in containers. Run from the project root:
+#   docker compose --env-file .env -f docker-compose.local.yml up -d --build
+# Services: vllm (:8000), mlflow (:5000), frontend (:3000).
+# Optional load tester (writes results.json): add `--profile test` and target `loadtest`.
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    ipc: host
+    ports:
+      - "8000:8000"
+    volumes:
+      - hf-cache:/root/.cache/huggingface
+    env_file:
+      - .env
+    environment:
+      # Docker Desktop runs in WSL2, where vLLM disables pinned memory by
+      # default. The V1 engine needs it (UVA), so re-enable on this WSL2 kernel.
+      - VLLM_WSL2_ENABLE_PIN_MEMORY=1
+    # Tiny local model. Turing has no bf16 -> dtype half; 6 GB card -> util 0.70.
+    # --enforce-eager skips CUDA-graph capture (~5.5 GiB) so the KV cache fits.
+    #    HuggingFaceTB/SmolLM2-135M-Instruct   ← which model to load (from VLLM_MODEL_LOCAL)
+    # --tensor-parallel-size 1              ← use 1 GPU
+    # --dtype half                          ← 16-bit weights (your Turing GPU has no bf16)
+    # --max-model-len ${MAX_MODEL_LEN}      ← max context, from MAX_MODEL_LEN in .env
+    # --gpu-memory-utilization 0.28         ← only use 28% of VRAM (small 6 GB card)
+    # --enforce-eager                       ← skip CUDA graph capture to save ~5.5 GB
+    # --api-key change-me                   ← require this key on every request
+    command: >
+      ${VLLM_MODEL_LOCAL}
+      --tensor-parallel-size 1
+      --dtype half
+      --max-model-len ${MAX_MODEL_LEN}
+      --gpu-memory-utilization 0.28
+      --enforce-eager
+      --api-key ${VLLM_API_KEY}
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 40
+      start_period: 60s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  mlflow:
+    build: ./mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlflow/data:/data
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      # Reaches vLLM by service name on the compose network (not localhost).
+      - VLLM_BASE_URL=http://vllm:8000/v1
+      - VLLM_API_KEY=${VLLM_API_KEY}
+    depends_on:
+      vllm:
+        condition: service_healthy
+
+  loadtest:
+    profiles: ["test"]
+    build: ./loadtest
+    volumes:
+      - ./loadtest:/out
+    command: >
+      -url http://vllm:8000/v1
+      -key ${VLLM_API_KEY}
+      -concurrency 1,8,32,64
+      -requests 60
+      -out /out/results.json
+    depends_on:
+      vllm:
+        condition: service_healthy
+
+volumes:
+  hf-cache:
