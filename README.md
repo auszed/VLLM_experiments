@@ -43,9 +43,16 @@ whether vLLM runs locally or on RunPod — you only change one URL.
 - **Frontend** (`frontend/`) — Next.js chat UI at `/chat`, calls the vLLM API.
 - **Load tester** (`loadtest/main.go`) — ramps concurrency, streams completions
   with `ignore_eos` for fixed work per request, reports throughput + TTFT/e2e
-  percentiles, writes `results.json`.
+  percentiles, and (with `-trace`) captures every request/response into
+  `results.json`. Sampling `temperature` is configurable.
+- **Answer eval** (`test/eval_dataset.py`) — runs a question dataset
+  (`test/questions.jsonl`) through the chat endpoint via `mlflow.genai.evaluate`,
+  logging one trace per distinct question so you can read/judge the answers.
+  Separate from throughput; run with `make eval`.
 - **MLflow** (`mlflow/`, `:5000`) — tracking server. `test/log_to_mlflow.py` turns
-  each `results.json` into one comparable run. Always local; RunPod never sees it.
+  each `results.json` into one comparable run and, per request, one MLflow **trace**
+  (Traces tab) whose execution time is that request's real latency. Always local;
+  RunPod never sees it.
 - **Orchestration** — `Makefile` + `scripts/*.ps1` (your PC) and
   `docker-compose.local.yml` (full local stack in containers).
 
@@ -53,6 +60,17 @@ whether vLLM runs locally or on RunPod — you only change one URL.
 `VLLM_BASE_URL` -> `results.json` -> `log_to_mlflow.py` -> compare runs at
 http://localhost:5000. Going to RunPod changes only the URL (step in
 [`deploy_runpod.md`](deploy_runpod.md)).
+
+**Two views of the endpoint:**
+
+- **Throughput** — `make loadtest` / `make loadtest-new`: metrics per concurrency
+  step, plus one MLflow trace per request (sort by execution time to find slow calls).
+- **Answer quality** — `make eval` / `make eval-new`: runs `test/questions.jsonl`
+  through chat completions, one trace per question in the `vllm-eval` experiment.
+
+**Load-test config** lives in `.env` (CLI flags override): `LOADTEST_CONCURRENCY`
+(the ramp), `LOADTEST_REQUESTS` (per step), `LOADTEST_TEMPERATURE` (>0 varies the
+generated text; 0 = identical answers). Edit questions in `test/questions.jsonl`.
 
 ## Quick start (local)
 
@@ -69,14 +87,18 @@ Copy-Item .env.example .env      # then set VLLM_API_KEY
 # 3. Start MLflow tracking (:5000)
 docker compose --env-file .env -f docker-compose.local.yml up -d mlflow
 
-# 4. Load test + log the run to MLflow
+# 4. Load test (throughput) + log the run + per-request traces to MLflow
 ./scripts/loadtest.ps1
+
+# 4b. (optional) Answer quality: run the question dataset, one trace per question
+./scripts/eval.ps1
 
 # 5. (optional) Manual chat UI (:3000) -> open /chat
 cd frontend; npm install; npm run dev
 ```
 
-Then browse runs at http://localhost:5000 and chat at http://localhost:3000/chat.
+Then browse runs at http://localhost:5000 (Traces tab for the answers) and chat at
+http://localhost:3000/chat.
 
 ## Why vLLM is fast: PagedAttention
 

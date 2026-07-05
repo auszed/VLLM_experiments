@@ -6,6 +6,7 @@ mlflow/data/
 
 # Load test output
 loadtest/results.json
+loadtest/traces.jsonl
 *.log
 
 # Node

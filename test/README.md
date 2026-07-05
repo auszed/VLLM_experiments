@@ -57,4 +57,16 @@ point `VLLM_BASE_URL` at the RunPod URL (`.../v1`) and re-run.
 - `conftest.py` — loads `.env`, builds the `OpenAI` client, exposes fixtures
   (`base_url`, `root_url`, `api_key`, `client`, `served_model`).
 - `test_endpoints.py` — the four smoke tests.
-- `log_to_mlflow.py` — (added in Phase 6) logs load-test results to MLflow.
+- `log_to_mlflow.py` — logs the load test's throughput metrics to MLflow (one run). With
+  `--trace-calls` (default via `scripts/loadtest.ps1`), also logs **one trace per request**
+  (Traces tab) whose execution time is that request's real end-to-end latency, so you can
+  inspect per-request performance behind the p50/p95 aggregates. Cap with `--max-traces N`.
+- `questions.jsonl` — editable question bank, one `{"question": "..."}` per line.
+- `eval_dataset.py` — registers `questions.jsonl` as a managed MLflow evaluation dataset
+  (Datasets tab) and runs `mlflow.genai.evaluate` against the chat endpoint, producing
+  **one trace per question** (Traces tab) in an Eval run under the `vllm-eval` experiment.
+  This is how you check answer quality (distinct questions, real answers), separate from
+  the throughput test. Run with `make eval` / `make eval-new`, or
+  `uv run python eval_dataset.py [--num N]`.
+- `trace_answers.py` — standalone chat probe writing `../loadtest/traces.jsonl` (no
+  MLflow), for a quick local eyeball: `uv run python trace_answers.py [--prompts f]`.

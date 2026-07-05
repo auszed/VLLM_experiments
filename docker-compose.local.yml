@@ -21,7 +21,8 @@ services:
     #    HuggingFaceTB/SmolLM2-135M-Instruct   ← which model to load (from VLLM_MODEL_LOCAL)
     # --tensor-parallel-size 1              ← use 1 GPU
     # --dtype half                          ← 16-bit weights (your Turing GPU has no bf16)
-    # --max-model-len ${MAX_MODEL_LEN}      ← max context, from MAX_MODEL_LEN in .env
+    # --max-model-len 2048                  ← SmolLM2-135M caps at 8192; 2048 is plenty
+    #                                          (NOT ${MAX_MODEL_LEN}=32768, tuned for RunPod Qwen)
     # --gpu-memory-utilization 0.28         ← only use 28% of VRAM (small 6 GB card)
     # --enforce-eager                       ← skip CUDA graph capture to save ~5.5 GB
     # --api-key change-me                   ← require this key on every request
@@ -29,7 +30,7 @@ services:
       ${VLLM_MODEL_LOCAL}
       --tensor-parallel-size 1
       --dtype half
-      --max-model-len ${MAX_MODEL_LEN}
+      --max-model-len 2048
       --gpu-memory-utilization 0.28
       --enforce-eager
       --api-key ${VLLM_API_KEY}

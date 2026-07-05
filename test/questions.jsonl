@@ -1,0 +1,12 @@
+{"question": "Write a Python function that returns the nth Fibonacci number."}
+{"question": "What is 17 * 23? Answer with just the number."}
+{"question": "Reverse a singly linked list in Python. Show the code."}
+{"question": "What does the Go expression len(\"héllo\") evaluate to, and why?"}
+{"question": "Write a SQL query to find the second highest salary from an Employee(id, salary) table."}
+{"question": "Explain what a mutex is in one short paragraph."}
+{"question": "Given a list of integers, write Python to return only the even numbers using a list comprehension."}
+{"question": "What is the time complexity of binary search, and why?"}
+{"question": "Write a bash one-liner that counts the number of lines in all .py files in the current directory."}
+{"question": "Convert this JSON to a Python dict and print the value of key 'name': {\"name\": \"Ada\", \"age\": 36}"}
+{"question": "Write a regular expression that matches a valid IPv4 address."}
+{"question": "In one sentence, what is the difference between a process and a thread?"}

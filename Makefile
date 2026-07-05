@@ -5,7 +5,7 @@
 COMPOSE := docker compose --env-file .env -f docker-compose.local.yml
 PS := powershell -NoProfile -ExecutionPolicy Bypass -File
 
-.PHONY: help up down restart logs ps health smoke loadtest loadtest-new loadtest-docker serve-local serve-runpod url-runpod client-runpod loadtest-runpod stop-runpod kill-runpod gpu urls clean
+.PHONY: help up down restart logs ps health smoke loadtest loadtest-new loadtest-docker eval eval-new serve-local serve-runpod url-runpod client-runpod loadtest-runpod stop-runpod kill-runpod gpu urls clean
 
 help: ## Show this help
 	@echo Local stack:
@@ -18,9 +18,11 @@ help: ## Show this help
 	@echo.
 	@echo Test:
 	@echo   make smoke           Run endpoint smoke tests
-	@echo   make loadtest        Load test and log to MLflow, shared experiment
-	@echo   make loadtest-new    Load test and log to a NEW timestamped experiment
+	@echo   make loadtest        Load test + per-call traces, log to MLflow (shared experiment)
+	@echo   make loadtest-new    Load test + per-call traces, log to a NEW timestamped experiment
 	@echo   make loadtest-docker Load test in a container, no MLflow
+	@echo   make eval            Run question dataset, one MLflow trace per answer (vllm-eval)
+	@echo   make eval-new        Same, in a NEW timestamped eval experiment
 	@echo.
 	@echo RunPod:
 	@echo   make serve-runpod    Print the command to start vLLM on the pod
@@ -66,6 +68,12 @@ loadtest-new: ## Load test + log to a NEW timestamped MLflow experiment
 
 loadtest-docker: ## Load test in a container (no MLflow)
 	$(COMPOSE) --profile test run --rm loadtest
+
+eval: ## Run the question dataset, one MLflow trace per answer (vllm-eval experiment)
+	$(PS) scripts/eval.ps1
+
+eval-new: ## Run the question dataset in a NEW timestamped eval experiment
+	$(PS) scripts/eval.ps1 -NewExperiment
 
 serve-runpod: ## Print the vLLM start command to paste on the RunPod pod
 	@echo Run this ON the pod (Linux terminal), or paste as the container start command:
